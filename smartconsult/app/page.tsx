@@ -1,27 +1,18 @@
-import { DashboardLayout } from './components/layout/DashboardLayout';
-import { HeroSection } from './components/home/HeroSection';
-import { QuickAccess } from './components/home/QuickAccess';
-import { Categories } from './components/home/Categories';
-import { BonusFeatures } from './components/home/BonusFeatures';
-import { AnimatedContainer } from './components/client/AnimatedContainer';
+import { DashboardLayout } from '@/app/components/layout/DashboardLayout';
+import { HeroSection } from '@/app/components/home/HeroSection';
+import { QuickAccess } from '@/app/components/home/QuickAccess';
+import { Categories } from '@/app/components/home/Categories';
+import { BonusFeatures } from '@/app/components/home/BonusFeatures';
 
 export default function Home() {
   return (
     <DashboardLayout>
-      <AnimatedContainer>
-        <div>
-          <HeroSection />
-        </div>
-        <div>
-          <QuickAccess />
-        </div>
-        <div>
-          <Categories />
-        </div>
-        <div>
-          <BonusFeatures />
-        </div>
-      </AnimatedContainer>
+      <div className="space-y-8">
+        <HeroSection />
+        <QuickAccess />
+        <Categories />
+        <BonusFeatures />
+      </div>
     </DashboardLayout>
   );
 }
