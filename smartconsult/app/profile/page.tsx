@@ -1,168 +1,294 @@
 'use client';
 
 import { useState } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
 import { motion } from 'framer-motion';
-import { useAuth } from '@/app/context/auth-context';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/app/components/ui/card';
-import { Input } from '@/app/components/ui/input';
-import { Button } from '@/app/components/ui/button';
-import { Label } from '@/app/components/ui/label';
-import { Alert, AlertDescription } from '@/app/components/ui/alert';
+import { DashboardLayout } from '@/app/components/layout/DashboardLayout';
 import { fadeUpVariant } from '@/app/components/animations/shared';
-import { format } from 'date-fns';
+import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
+import { Button } from '@/app/components/ui/button';
+import { Input } from '@/app/components/ui/input';
+import { Label } from '@/app/components/ui/label';
+import { Badge } from '@/app/components/ui/badge';
+import { Textarea } from '@/app/components/ui/textarea';
+import { 
+  User, 
+  Mail, 
+  Phone, 
+  MapPin, 
+  Calendar,
+  Bell,
+  Shield,
+  Clock,
+  Settings,
+  Video
+} from 'lucide-react';
+import Link from 'next/link';
 
-const profileSchema = z.object({
-  name: z.string().min(2, 'Name must be at least 2 characters'),
-});
+// Mock user data
+const userData = {
+  name: 'John Doe',
+  email: 'john.doe@example.com',
+  phone: '+1 (555) 123-4567',
+  location: 'New York, USA',
+  joinDate: 'March 2024',
+  role: 'user',
+  bio: 'Software developer passionate about creating innovative solutions.',
+  notifications: true,
+  twoFactorAuth: false
+};
 
-type ProfileForm = z.infer<typeof profileSchema>;
+const recentActivity = [
+  {
+    type: 'consultation',
+    title: 'Tax Planning Session',
+    date: '2024-03-15',
+    time: '10:00 AM',
+    status: 'completed'
+  },
+  {
+    type: 'booking',
+    title: 'Business Strategy Meeting',
+    date: '2024-03-20',
+    time: '02:30 PM',
+    status: 'upcoming'
+  },
+  {
+    type: 'consultation',
+    title: 'Legal Consultation',
+    date: '2024-03-10',
+    time: '11:00 AM',
+    status: 'completed'
+  }
+];
 
 export default function ProfilePage() {
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
-  const { user, checkAuth } = useAuth();
+  const [isEditing, setIsEditing] = useState(false);
+  const [formData, setFormData] = useState(userData);
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors, isSubmitting },
-  } = useForm<ProfileForm>({
-    resolver: zodResolver(profileSchema),
-    defaultValues: {
-      name: user?.name || '',
-    },
-  });
-
-  const onSubmit = async (data: ProfileForm) => {
-    try {
-      setError(null);
-      setSuccess(null);
-      
-      const token = localStorage.getItem('token');
-      if (!token) {
-        throw new Error('Not authenticated');
-      }
-
-      // TODO: Implement API endpoint for updating user profile
-      // const response = await api.users.updateProfile(token, data);
-      
-      // For now, just show a success message
-      setSuccess('Profile updated successfully');
-      await checkAuth(); // Refresh user data
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update profile');
-    }
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  if (!user) {
-    return null;
-  }
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    // Here you would typically make an API call to update the user data
+    setIsEditing(false);
+  };
 
   return (
-    <div className="min-h-screen bg-background p-8">
-      <motion.div
-        variants={fadeUpVariant}
-        initial="hidden"
-        animate="visible"
-        className="max-w-2xl mx-auto space-y-8"
-      >
-        <div>
-          <h1 className="text-3xl font-[700] mb-2">My Profile</h1>
-          <p className="text-muted-foreground">Manage your account settings and preferences</p>
+    <DashboardLayout>
+      <div className="space-y-8">
+        {/* Profile Header */}
+        <motion.div
+          variants={fadeUpVariant}
+          initial="hidden"
+          animate="visible"
+          className="flex items-center justify-between"
+        >
+          <div>
+            <h1 className="text-3xl font-[700] text-glow">Profile Settings</h1>
+            <p className="text-muted-foreground mt-1">Manage your account settings and preferences</p>
+          </div>
+          <Button onClick={() => setIsEditing(!isEditing)}>
+            <Settings className="w-4 h-4 mr-2" />
+            {isEditing ? 'Cancel' : 'Edit Profile'}
+          </Button>
+        </motion.div>
+
+        <div className="grid gap-8 md:grid-cols-3">
+          {/* Main Profile Info */}
+          <motion.div
+            variants={fadeUpVariant}
+            initial="hidden"
+            animate="visible"
+            className="md:col-span-2 space-y-6"
+          >
+            <Card>
+              <CardHeader>
+                <CardTitle>Personal Information</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="name">Full Name</Label>
+                      <div className="relative">
+                        <Input
+                          id="name"
+                          name="name"
+                          value={formData.name}
+                          onChange={handleInputChange}
+                          disabled={!isEditing}
+                          className="pl-10"
+                        />
+                        <User className="absolute left-3 top-2.5 h-5 w-5 text-muted-foreground" />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="email">Email</Label>
+                      <div className="relative">
+                        <Input
+                          id="email"
+                          name="email"
+                          type="email"
+                          value={formData.email}
+                          onChange={handleInputChange}
+                          disabled={!isEditing}
+                          className="pl-10"
+                        />
+                        <Mail className="absolute left-3 top-2.5 h-5 w-5 text-muted-foreground" />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="phone">Phone</Label>
+                      <div className="relative">
+                        <Input
+                          id="phone"
+                          name="phone"
+                          value={formData.phone}
+                          onChange={handleInputChange}
+                          disabled={!isEditing}
+                          className="pl-10"
+                        />
+                        <Phone className="absolute left-3 top-2.5 h-5 w-5 text-muted-foreground" />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="location">Location</Label>
+                      <div className="relative">
+                        <Input
+                          id="location"
+                          name="location"
+                          value={formData.location}
+                          onChange={handleInputChange}
+                          disabled={!isEditing}
+                          className="pl-10"
+                        />
+                        <MapPin className="absolute left-3 top-2.5 h-5 w-5 text-muted-foreground" />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="bio">Bio</Label>
+                    <Textarea
+                      id="bio"
+                      name="bio"
+                      value={formData.bio}
+                      onChange={handleInputChange}
+                      disabled={!isEditing}
+                      className="min-h-[100px]"
+                    />
+                  </div>
+                  {isEditing && (
+                    <Button type="submit" className="w-full">
+                      Save Changes
+                    </Button>
+                  )}
+                </form>
+              </CardContent>
+            </Card>
+
+            {/* Recent Activity */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Recent Activity</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {recentActivity.map((activity, index) => (
+                    <div
+                      key={index}
+                      className="flex items-center justify-between p-4 rounded-lg bg-muted/50"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="p-2 rounded-full bg-primary/10">
+                          {activity.type === 'consultation' ? (
+                            <Video className="w-5 h-5 text-primary" />
+                          ) : (
+                            <Calendar className="w-5 h-5 text-primary" />
+                          )}
+                        </div>
+                        <div>
+                          <h4 className="font-medium">{activity.title}</h4>
+                          <p className="text-sm text-muted-foreground">
+                            {activity.date} at {activity.time}
+                          </p>
+                        </div>
+                      </div>
+                      <Badge
+                        variant={activity.status === 'completed' ? 'secondary' : 'default'}
+                      >
+                        {activity.status}
+                      </Badge>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+
+          {/* Side Panel */}
+          <motion.div
+            variants={fadeUpVariant}
+            initial="hidden"
+            animate="visible"
+            className="space-y-6"
+          >
+            {/* Account Info */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Account Info</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between py-2">
+                  <div className="flex items-center gap-2">
+                    <Calendar className="w-5 h-5 text-muted-foreground" />
+                    <span className="text-sm">Member Since</span>
+                  </div>
+                  <span className="text-sm font-medium">{userData.joinDate}</span>
+                </div>
+                <div className="flex items-center justify-between py-2">
+                  <div className="flex items-center gap-2">
+                    <User className="w-5 h-5 text-muted-foreground" />
+                    <span className="text-sm">Account Type</span>
+                  </div>
+                  <Badge variant="outline" className="capitalize">
+                    {userData.role}
+                  </Badge>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Settings */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Settings</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between py-2">
+                  <div className="flex items-center gap-2">
+                    <Bell className="w-5 h-5 text-muted-foreground" />
+                    <span className="text-sm">Notifications</span>
+                  </div>
+                  <Badge variant={userData.notifications ? 'default' : 'outline'}>
+                    {userData.notifications ? 'Enabled' : 'Disabled'}
+                  </Badge>
+                </div>
+                <div className="flex items-center justify-between py-2">
+                  <div className="flex items-center gap-2">
+                    <Shield className="w-5 h-5 text-muted-foreground" />
+                    <span className="text-sm">Two-Factor Auth</span>
+                  </div>
+                  <Badge variant={userData.twoFactorAuth ? 'default' : 'outline'}>
+                    {userData.twoFactorAuth ? 'Enabled' : 'Disabled'}
+                  </Badge>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
         </div>
-
-        <Card className="border-2">
-          <CardHeader>
-            <CardTitle>Account Information</CardTitle>
-            <CardDescription>
-              View and update your account details
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {/* Account Details */}
-            <div className="grid gap-4 p-4 bg-muted/30 rounded-lg">
-              <div>
-                <Label className="text-muted-foreground">Email</Label>
-                <p className="font-medium">{user.email}</p>
-              </div>
-              <div>
-                <Label className="text-muted-foreground">Role</Label>
-                <p className="font-medium capitalize">{user.role}</p>
-              </div>
-              <div>
-                <Label className="text-muted-foreground">Member Since</Label>
-                <p className="font-medium">
-                  {format(new Date(user.createdAt), 'MMMM d, yyyy')}
-                </p>
-              </div>
-            </div>
-
-            {/* Update Profile Form */}
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 pt-4">
-              {error && (
-                <Alert variant="destructive">
-                  <AlertDescription>{error}</AlertDescription>
-                </Alert>
-              )}
-              {success && (
-                <Alert>
-                  <AlertDescription>{success}</AlertDescription>
-                </Alert>
-              )}
-
-              <div className="space-y-2">
-                <Label htmlFor="name">Full Name</Label>
-                <Input
-                  id="name"
-                  type="text"
-                  placeholder="Enter your full name"
-                  {...register('name')}
-                />
-                {errors.name && (
-                  <p className="text-sm text-destructive">{errors.name.message}</p>
-                )}
-              </div>
-
-              <Button
-                type="submit"
-                className="w-full"
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? 'Updating...' : 'Update Profile'}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
-
-        {/* Account Statistics */}
-        <Card className="border-2">
-          <CardHeader>
-            <CardTitle>Account Statistics</CardTitle>
-            <CardDescription>
-              Overview of your account activity
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              <div className="p-4 bg-muted/30 rounded-lg text-center">
-                <p className="text-2xl font-[700] text-primary">0</p>
-                <p className="text-sm text-muted-foreground">Total Bookings</p>
-              </div>
-              <div className="p-4 bg-muted/30 rounded-lg text-center">
-                <p className="text-2xl font-[700] text-primary">0</p>
-                <p className="text-sm text-muted-foreground">Completed Sessions</p>
-              </div>
-              <div className="p-4 bg-muted/30 rounded-lg text-center">
-                <p className="text-2xl font-[700] text-primary">0</p>
-                <p className="text-sm text-muted-foreground">Upcoming Sessions</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </motion.div>
-    </div>
+      </div>
+    </DashboardLayout>
   );
 } 

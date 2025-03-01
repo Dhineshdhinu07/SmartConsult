@@ -22,7 +22,7 @@ export function TopNav() {
             <Link href="/dashboard" className="text-foreground/80 hover:text-primary font-secondary">
               Dashboard
             </Link>
-            <Link href="/bookings" className="text-foreground/80 hover:text-primary font-secondary">
+            <Link href="/booking" className="text-foreground/80 hover:text-primary font-secondary">
               Bookings
             </Link>
             <Link href="/consultations" className="text-foreground/80 hover:text-primary font-secondary">

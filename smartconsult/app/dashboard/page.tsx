@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/app/components/ui/table';
 import { Button } from '@/app/components/ui/button';
 import { Badge } from '@/app/components/ui/badge';
@@ -10,257 +10,249 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Trash2, Calendar, Clock, ExternalLink, ArrowUpDown, Edit2, Video } from 'lucide-react';
 import { DashboardLayout } from '@/app/components/layout/DashboardLayout';
 import { format } from 'date-fns';
-import { useAuth } from '@/app/context/auth-context';
-import { api } from '@/app/lib/api-client';
-import type { Booking } from '@/app/types/api';
+import { motion } from 'framer-motion';
+import { fadeUpVariant } from '@/app/components/animations/shared';
+import { Card } from '@/app/components/ui/card';
+import Link from 'next/link';
+import { 
+  TrendingUp,
+  Star,
+  Users,
+  BarChart3,
+  ArrowRight,
+  CheckCircle2,
+  XCircle,
+  Clock4
+} from 'lucide-react';
 
-type SortField = 'date' | 'consultant' | 'status';
-type SortOrder = 'asc' | 'desc';
+// Mock data for testing
+const stats = [
+  {
+    title: 'Total Consultations',
+    value: '156',
+    change: '+12.5%',
+    trend: 'up',
+    icon: Video,
+    color: 'text-primary'
+  },
+  {
+    title: 'Active Experts',
+    value: '48',
+    change: '+5.2%',
+    trend: 'up',
+    icon: Users,
+    color: 'text-secondary'
+  },
+  {
+    title: 'Avg. Rating',
+    value: '4.8',
+    change: '+0.3',
+    trend: 'up',
+    icon: Star,
+    color: 'text-accent'
+  },
+  {
+    title: 'Revenue',
+    value: '$12.5k',
+    change: '+18.2%',
+    trend: 'up',
+    icon: TrendingUp,
+    color: 'text-destructive'
+  }
+];
 
-const TIME_SLOTS = [
-  '09:00 AM', '10:00 AM', '11:00 AM', '12:00 PM',
-  '02:00 PM', '03:00 PM', '04:00 PM', '05:00 PM'
+const recentBookings = [
+  {
+    id: '1',
+    expert: 'Dr. Sarah Johnson',
+    service: 'Tax Consultation',
+    date: '2024-03-15',
+    time: '10:00 AM',
+    status: 'confirmed',
+    amount: '$150'
+  },
+  {
+    id: '2',
+    expert: 'Michael Chen',
+    service: 'Business Strategy',
+    date: '2024-03-14',
+    time: '02:30 PM',
+    status: 'completed',
+    amount: '$200'
+  },
+  {
+    id: '3',
+    expert: 'Emily Brown',
+    service: 'Legal Advice',
+    date: '2024-03-14',
+    time: '11:00 AM',
+    status: 'cancelled',
+    amount: '$180'
+  }
+];
+
+const upcomingConsultations = [
+  {
+    id: '1',
+    expert: {
+      name: 'Dr. Sarah Johnson',
+      specialization: 'Tax Consultant',
+      image: '/experts/expert1.jpg'
+    },
+    date: '2024-03-15',
+    time: '10:00 AM',
+    duration: '45 minutes',
+    type: 'video'
+  },
+  {
+    id: '2',
+    expert: {
+      name: 'Michael Chen',
+      specialization: 'Business Strategist',
+      image: '/experts/expert2.jpg'
+    },
+    date: '2024-03-16',
+    time: '02:30 PM',
+    duration: '60 minutes',
+    type: 'video'
+  }
 ];
 
 export default function DashboardPage() {
-  const { user } = useAuth();
-  const [bookings, setBookings] = useState<Booking[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [sortField, setSortField] = useState<SortField>('date');
-  const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-  const [selectedTime, setSelectedTime] = useState<string>('');
-  const [editingBooking, setEditingBooking] = useState<Booking | null>(null);
-
-  useEffect(() => {
-    fetchBookings();
-  }, []);
-
-  const fetchBookings = async () => {
-    try {
-      setLoading(true);
-      const token = localStorage.getItem('token');
-      if (!token) throw new Error('No auth token');
-
-      const response = await api.bookings.getMyBookings(token);
-      if (!response.success) throw new Error(response.error);
-
-      setBookings(response.data || []);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch bookings');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const cancelBooking = async (id: string) => {
-    try {
-      const token = localStorage.getItem('token');
-      if (!token) throw new Error('No auth token');
-
-      const response = await api.bookings.update(token, id, { status: 'cancelled' });
-      if (!response.success) throw new Error(response.error);
-
-      setBookings(bookings.map(b => b.id === id ? { ...b, status: 'cancelled' } : b));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to cancel booking');
-    }
-  };
-
-  const updateBookingDateTime = async () => {
-    if (!editingBooking || !selectedDate || !selectedTime) return;
-
-    try {
-      const token = localStorage.getItem('token');
-      if (!token) throw new Error('No auth token');
-
-      const response = await api.bookings.update(token, editingBooking.id, {
-        date: format(selectedDate, 'yyyy-MM-dd'),
-        time: selectedTime
-      });
-
-      if (!response.success) throw new Error(response.error);
-
-      setBookings(bookings.map(b => 
-        b.id === editingBooking.id 
-          ? { ...b, date: format(selectedDate, 'yyyy-MM-dd'), time: selectedTime }
-          : b
-      ));
-      setEditingBooking(null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update booking');
-    }
-  };
-
-  const sortBookings = (a: Booking, b: Booking) => {
-    if (sortField === 'date') {
-      const dateA = new Date(`${a.date} ${a.time}`);
-      const dateB = new Date(`${b.date} ${b.time}`);
-      return sortOrder === 'asc' ? dateA.getTime() - dateB.getTime() : dateB.getTime() - dateA.getTime();
-    }
-    if (sortField === 'consultant') {
-      return sortOrder === 'asc' 
-        ? a.expertName.localeCompare(b.expertName)
-        : b.expertName.localeCompare(a.expertName);
-    }
-    return sortOrder === 'asc' 
-      ? a.status.localeCompare(b.status)
-      : b.status.localeCompare(a.status);
-  };
-
-  const toggleSort = (field: SortField) => {
-    if (sortField === field) {
-      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortField(field);
-      setSortOrder('asc');
-    }
-  };
-
-  const sortedBookings = [...bookings].sort(sortBookings);
-
-  const handleDateSelect = (date: Date | undefined) => {
-    setSelectedDate(date || null);
-  };
-
-  if (loading) {
-    return (
-      <DashboardLayout>
-        <div className="p-6 flex justify-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-        </div>
-      </DashboardLayout>
-    );
-  }
-
-  if (error) {
-    return (
-      <DashboardLayout>
-        <div className="p-6">
-          <div className="bg-destructive/10 text-destructive p-4 rounded-lg">
-            {error}
-          </div>
-        </div>
-      </DashboardLayout>
-    );
-  }
-
   return (
     <DashboardLayout>
-      <div className='p-6 space-y-4'>
-        <h1 className='text-2xl font-bold'>📅 My Bookings</h1>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead onClick={() => toggleSort('consultant')} className="cursor-pointer">
-                Consultant <ArrowUpDown className="inline h-4 w-4" />
-              </TableHead>
-              <TableHead onClick={() => toggleSort('date')} className="cursor-pointer">
-                <Calendar className='inline-block w-4 h-4 mr-2' /> Date <ArrowUpDown className="inline h-4 w-4" />
-              </TableHead>
-              <TableHead><Clock className='inline-block w-4 h-4 mr-2' /> Time</TableHead>
-              <TableHead onClick={() => toggleSort('status')} className="cursor-pointer">
-                Status <ArrowUpDown className="inline h-4 w-4" />
-              </TableHead>
-              <TableHead><Video className='inline-block w-4 h-4 mr-2' /> Meeting Link</TableHead>
-              <TableHead>Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {sortedBookings.map((booking) => (
-              <TableRow key={booking.id}>
-                <TableCell>{booking.expertName}</TableCell>
-                <TableCell>{format(new Date(booking.date), 'MMM dd, yyyy')}</TableCell>
-                <TableCell>{booking.time}</TableCell>
-                <TableCell>
-                  <Badge variant={
-                    booking.status === 'confirmed' ? 'default' : 
-                    booking.status === 'pending' ? 'secondary' : 
-                    'destructive'
-                  }>
-                    {booking.status}
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  {booking.meetingLink && (
-                    <a 
-                      href={booking.meetingLink} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="text-primary hover:underline flex items-center"
-                    >
-                      Join Meeting <ExternalLink className="ml-1 h-4 w-4" />
-                    </a>
-                  )}
-                </TableCell>
-                <TableCell className="space-x-2">
-                  {booking.status !== 'cancelled' && (
-                    <>
-                      <Dialog>
-                        <DialogTrigger asChild>
-                          <Button 
-                            variant='outline' 
-                            size='sm'
-                            onClick={() => {
-                              setEditingBooking(booking);
-                              setSelectedDate(new Date(booking.date));
-                              setSelectedTime(booking.time);
-                            }}
-                          >
-                            <Edit2 className='w-4 h-4 mr-2' /> Edit
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent>
-                          <DialogHeader>
-                            <DialogTitle>Reschedule Booking</DialogTitle>
-                          </DialogHeader>
-                          <div className="space-y-4 py-4">
-                            <div className="space-y-2">
-                              <label className="text-sm font-medium">Select Date</label>
-                              <CalendarInput
-                                mode="single"
-                                selected={selectedDate || undefined}
-                                onSelect={handleDateSelect}
-                                disabled={(date) => date < new Date()}
-                                className="rounded-md border"
-                              />
-                            </div>
-                            <div className="space-y-2">
-                              <label className="text-sm font-medium">Select Time</label>
-                              <Select value={selectedTime} onValueChange={setSelectedTime}>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select time" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {TIME_SLOTS.map((slot) => (
-                                    <SelectItem key={slot} value={slot}>
-                                      {slot}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                            <Button 
-                              className="w-full"
-                              onClick={updateBookingDateTime}
-                              disabled={!selectedDate || !selectedTime}
-                            >
-                              Update Booking
-                            </Button>
-                          </div>
-                        </DialogContent>
-                      </Dialog>
-                      <Button variant='outline' size='sm' onClick={() => cancelBooking(booking.id)}>
-                        <Trash2 className='w-4 h-4 mr-2' /> Cancel
-                      </Button>
-                    </>
-                  )}
-                </TableCell>
-              </TableRow>
+      <div className="p-6 space-y-8">
+        {/* Stats Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {stats.map((stat, index) => (
+            <motion.div
+              key={stat.title}
+              variants={fadeUpVariant}
+              initial="hidden"
+              animate="visible"
+              custom={index}
+            >
+              <Card className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">{stat.title}</p>
+                    <h3 className="text-2xl font-bold mt-1">{stat.value}</h3>
+                    <p className="text-sm text-emerald-500 mt-1">
+                      {stat.change}
+                    </p>
+                  </div>
+                  <div className={`p-3 rounded-full bg-primary/10 ${stat.color}`}>
+                    <stat.icon className="w-5 h-5" />
+                  </div>
+                </div>
+              </Card>
+            </motion.div>
+          ))}
+        </div>
+
+        {/* Recent Bookings */}
+        <motion.div
+          variants={fadeUpVariant}
+          initial="hidden"
+          animate="visible"
+          className="space-y-4"
+        >
+          <div className="flex items-center justify-between">
+            <h2 className="text-2xl font-bold">Recent Bookings</h2>
+            <Button variant="outline" size="sm" asChild>
+              <Link href="/bookings">
+                View All <ArrowRight className="ml-2 w-4 h-4" />
+              </Link>
+            </Button>
+          </div>
+          <Card>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Expert</TableHead>
+                  <TableHead>Service</TableHead>
+                  <TableHead>Date & Time</TableHead>
+                  <TableHead>Amount</TableHead>
+                  <TableHead>Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {recentBookings.map((booking) => (
+                  <TableRow key={booking.id}>
+                    <TableCell>{booking.expert}</TableCell>
+                    <TableCell>{booking.service}</TableCell>
+                    <TableCell>
+                      {booking.date} at {booking.time}
+                    </TableCell>
+                    <TableCell>{booking.amount}</TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={
+                          booking.status === 'confirmed'
+                            ? 'default'
+                            : booking.status === 'completed'
+                            ? 'secondary'
+                            : 'destructive'
+                        }
+                      >
+                        {booking.status}
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </Card>
+        </motion.div>
+
+        {/* Upcoming Consultations */}
+        <motion.div
+          variants={fadeUpVariant}
+          initial="hidden"
+          animate="visible"
+          className="space-y-4"
+        >
+          <div className="flex items-center justify-between">
+            <h2 className="text-2xl font-bold">Upcoming Consultations</h2>
+            <Button variant="outline" size="sm" asChild>
+              <Link href="/consultations">
+                View All <ArrowRight className="ml-2 w-4 h-4" />
+              </Link>
+            </Button>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {upcomingConsultations.map((consultation) => (
+              <Card key={consultation.id} className="p-6">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center space-x-4">
+                    <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+                      <Video className="w-6 h-6 text-primary" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold">{consultation.expert.name}</h3>
+                      <p className="text-sm text-muted-foreground">
+                        {consultation.expert.specialization}
+                      </p>
+                    </div>
+                  </div>
+                  <Button variant="outline" size="sm">
+                    Join
+                  </Button>
+                </div>
+                <div className="mt-4 space-y-2">
+                  <div className="flex items-center text-sm text-muted-foreground">
+                    <Calendar className="w-4 h-4 mr-2" />
+                    {consultation.date}
+                  </div>
+                  <div className="flex items-center text-sm text-muted-foreground">
+                    <Clock className="w-4 h-4 mr-2" />
+                    {consultation.time} ({consultation.duration})
+                  </div>
+                </div>
+              </Card>
             ))}
-          </TableBody>
-        </Table>
+          </div>
+        </motion.div>
       </div>
     </DashboardLayout>
   );
