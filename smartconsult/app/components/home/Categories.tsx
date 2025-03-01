@@ -74,7 +74,7 @@ const categories = [
 
 export function Categories() {
   return (
-    <section className="py-16 bg-muted/30 rounded-2xl">
+    <section className="py-16 rounded-2xl">
       <div className="max-w-7xl mx-auto px-4">
         <motion.div
           variants={fadeUpVariant}

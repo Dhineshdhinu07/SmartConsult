@@ -49,7 +49,7 @@ const features = [
   },
   {
     title: 'HD Video Calls',
-    description: 'Crystal clear video consultations',
+    description: 'Crystal clear video consultations with experts',
     icon: VideoIcon,
     color: 'bg-accent/10 text-accent',
     badge: 'HD'

@@ -3,6 +3,7 @@ import { HeroSection } from '@/app/components/home/HeroSection';
 import { QuickAccess } from '@/app/components/home/QuickAccess';
 import { Categories } from '@/app/components/home/Categories';
 import { BonusFeatures } from '@/app/components/home/BonusFeatures';
+import { ContactSection } from '@/app/components/home/ContactSection';
 
 export default function Home() {
   return (
@@ -12,6 +13,7 @@ export default function Home() {
         <QuickAccess />
         <Categories />
         <BonusFeatures />
+        <ContactSection />
       </div>
     </DashboardLayout>
   );
