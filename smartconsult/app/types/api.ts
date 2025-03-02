@@ -1,10 +1,13 @@
-export type User = {
+export interface User {
   id: string;
+  name: string;
   email: string;
-  name?: string;
-  role: 'user' | 'admin';
+  phone?: string;
+  image?: string;
+  role: 'user' | 'expert' | 'admin';
   createdAt: string;
-};
+  updatedAt: string;
+}
 
 export type Booking = {
   id: string;
@@ -36,12 +39,12 @@ export type Expert = {
   createdAt: string;
 };
 
-export type ApiResponse<T> = {
+export interface ApiResponse<T = any> {
   success: boolean;
+  message?: string;
   data?: T;
   error?: string;
-  message?: string;
-};
+}
 
 export type LoginRequest = {
   email: string;

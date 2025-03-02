@@ -7,11 +7,17 @@ import { Card } from '@/app/components/ui/card';
 import { Button } from '@/app/components/ui/button';
 import { Input } from '@/app/components/ui/input';
 import { Textarea } from '@/app/components/ui/textarea';
-import { Calendar, Clock, Video, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { Calendar, Clock, Video, ArrowRight, CheckCircle2, Loader2 } from 'lucide-react';
 import { useState } from 'react';
 import { Calendar as CalendarComponent } from '@/app/components/ui/calendar';
 import { addDays, format } from 'date-fns';
 import { Badge } from '@/app/components/ui/badge';
+import { useAuth } from '@/app/context/auth-context';
+import { api } from '@/app/lib/utils/api';
+import { toast } from 'sonner';
+import { useRouter } from 'next/navigation';
+import { v4 as uuidv4 } from 'uuid';
+import { load } from '@cashfreepayments/cashfree-js';
 
 const timeSlots = [
   { id: 1, time: '09:00 AM', available: true },
@@ -22,16 +28,117 @@ const timeSlots = [
   { id: 6, time: '04:00 PM', available: false },
 ];
 
+interface PaymentSessionResponse {
+  payment_session_id: string;
+  success: boolean;
+  message?: string;
+}
+
+interface PaymentStatusResponse {
+  success: boolean;
+  status: string;
+  message: string;
+  order_id: string;
+}
+
 export default function BookingPage() {
   const [selectedDate, setSelectedDate] = useState<Date>();
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
   const [currentStep, setCurrentStep] = useState(1);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const { user } = useAuth();
+  const router = useRouter();
 
   const steps = [
     { number: 1, title: 'Select Date & Time', icon: Calendar },
     { number: 2, title: 'Consultation Details', icon: Video },
     { number: 3, title: 'Review & Confirm', icon: CheckCircle2 },
   ];
+
+  const checkPaymentStatus = async (orderId: string): Promise<PaymentStatusResponse> => {
+    try {
+      const response = await api.get<PaymentStatusResponse>(`/api/payments/status/${orderId}`);
+      return response.data;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Failed to check payment status');
+    }
+  };
+
+  const handlePayment = async () => {
+    try {
+      setIsProcessing(true);
+
+      // Create order data
+      const orderId = uuidv4();
+      const orderData = {
+        order_id: orderId,
+        order_amount: 500, // Consultation fee
+        order_currency: 'INR',
+        customer_details: {
+          customer_id: user?.id || uuidv4(),
+          customer_name: user?.name || '',
+          customer_email: user?.email || '',
+          customer_phone: user?.phone || '',
+        },
+        order_meta: {
+          return_url: `${window.location.origin}/payment-status/${orderId}?order_token={order_token}`,
+          notify_url: `${window.location.origin}/api/payments/webhook`,
+        },
+        booking_details: {
+          date: selectedDate ? format(selectedDate, 'yyyy-MM-dd') : '',
+          time: selectedTime,
+          duration: 45, // minutes
+          expert_id: 'dr-sarah-johnson', // Replace with actual expert ID
+          service_type: 'video',
+        },
+      };
+
+      // Create payment session
+      const response = await api.post<PaymentSessionResponse>('/api/payments', orderData);
+
+      if (!response.data.success || !response.data.payment_session_id) {
+        throw new Error(response.data.message || 'Failed to create payment session');
+      }
+
+      // Initialize Cashfree
+      const cashfree = await load({
+        mode: 'sandbox', // Change to 'production' for live environment
+      });
+
+      // Initialize payment
+      const paymentResponse = await cashfree.checkout({
+        paymentSessionId: response.data.payment_session_id,
+        returnUrl: orderData.order_meta.return_url,
+      });
+
+      // Handle payment completion
+      if (paymentResponse.error) {
+        throw new Error(paymentResponse.error.message);
+      }
+
+      // Start polling for payment status
+      const pollStatus = async () => {
+        try {
+          const statusResponse = await checkPaymentStatus(orderId);
+          if (statusResponse.status === 'PAID') {
+            router.push(`/payment-status/${orderId}?status=success`);
+          } else if (statusResponse.status === 'FAILED') {
+            router.push(`/payment-status/${orderId}?status=failed`);
+          }
+        } catch (error) {
+          console.error('Error checking payment status:', error);
+        }
+      };
+
+      // Poll every 5 seconds for 2 minutes
+      const pollInterval = setInterval(pollStatus, 5000);
+      setTimeout(() => clearInterval(pollInterval), 120000);
+
+    } catch (error: any) {
+      toast.error(error.message || 'Payment failed. Please try again.');
+      setIsProcessing(false);
+    }
+  };
 
   return (
     <DashboardLayout>
@@ -255,6 +362,35 @@ export default function BookingPage() {
                         </p>
                       </div>
                     </div>
+                  </div>
+                  <div className="mt-6 border-t pt-6">
+                    <div className="flex justify-between items-center mb-6">
+                      <div>
+                        <p className="text-sm font-medium">Total Amount</p>
+                        <p className="text-2xl font-bold">₹500</p>
+                      </div>
+                      <Button
+                        size="lg"
+                        className="gap-2"
+                        onClick={handlePayment}
+                        disabled={isProcessing}
+                      >
+                        {isProcessing ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            Processing...
+                          </>
+                        ) : (
+                          <>
+                            Confirm & Pay
+                            <ArrowRight className="w-4 h-4" />
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                    <p className="text-sm text-foreground/70 text-center">
+                      By clicking Confirm & Pay, you agree to our terms and conditions
+                    </p>
                   </div>
                 </Card>
               </motion.div>
